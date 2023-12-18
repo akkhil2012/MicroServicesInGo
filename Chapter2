@@ -20,19 +20,39 @@ func main() {
 
 
 
-Handler.go
+handler/hello.go
 =========
 
 
 
+package handlers
 
-package main
+import (
+	"fmt"
+	"io/ioutil"
+	"log"
+	"net/http"
+)
 
-import "strings"
-
-func validateUserInput(firstName string, lastName string, email string, userTickets uint) (bool, bool, bool) {
-	isValidName := len(firstName) >= 2 && len(lastName) >= 2
-	isValidEmail := strings.Contains(email, "@")
-	isValidTicketNumber := userTickets > 0 && userTickets <= remainingTickets
-	return isValidName, isValidEmail, isValidTicketNumber
+type Hello struct {
+	l *log.Logger
 }
+
+func NewHello(l *log.Logger) *Hello {
+	return &Hello{l}
+}
+
+func (h *Hello) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+
+	h.l.Println("Hellp World")
+	d, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Oops"))
+		return
+	}
+
+	fmt.Fprintf(w, "Data %s\n", d)
+
+}
+
