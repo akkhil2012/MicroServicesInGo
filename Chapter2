@@ -1,0 +1,38 @@
+Move logic form main.go to handler:
+============
+
+
+
+main.go 
+=======
+
+func main() {
+
+	l := log.New(os.Stdout, "producdt-api", log.LstdFlags)
+
+	hh := handlers.NewHello(l)
+	sm := http.NewServeMux()
+	sm.Handle("/", hh)
+
+	http.ListenAndServe(":9090", sm)
+
+}
+
+
+
+Handler.go
+=========
+
+
+
+
+package main
+
+import "strings"
+
+func validateUserInput(firstName string, lastName string, email string, userTickets uint) (bool, bool, bool) {
+	isValidName := len(firstName) >= 2 && len(lastName) >= 2
+	isValidEmail := strings.Contains(email, "@")
+	isValidTicketNumber := userTickets > 0 && userTickets <= remainingTickets
+	return isValidName, isValidEmail, isValidTicketNumber
+}
