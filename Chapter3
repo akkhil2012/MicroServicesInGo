@@ -1,0 +1,166 @@
+Example or REST API; CRUD Operations:
+
+
+package main
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"strconv"
+	"sync"
+)
+
+// Book represents a book entity
+type Book struct {
+	ID     int    `json:"id"`
+	Title  string `json:"title"`
+	Author string `json:"author"`
+}
+
+var (
+	books      []Book
+	nextBookID = 1
+	mutex      sync.Mutex
+)
+
+func main() {
+	// Set up routes
+	http.HandleFunc("/books", getBooksHandler)
+	http.HandleFunc("/books/add", addBookHandler)
+	http.HandleFunc("/books/update", updateBookHandler)
+	http.HandleFunc("/books/delete", deleteBookHandler)
+
+	// Start the web server on port 8080
+	fmt.Println("Server is listening on :8080...")
+	http.ListenAndServe(":8080", nil)
+}
+
+// Handler function for GET /books
+func getBooksHandler(w http.ResponseWriter, r *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Convert the books slice to JSON
+	response, err := json.Marshal(books)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	// Set the content type header to application/json
+	w.Header().Set("Content-Type", "application/json")
+
+	// Write the JSON response to the client
+	w.Write(response)
+}
+
+// Handler function for POST /books/add
+func addBookHandler(w http.ResponseWriter, r *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Decode the JSON request body into a Book struct
+	var newBook Book
+	err := json.NewDecoder(r.Body).Decode(&newBook)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Assign a unique ID to the new book
+	newBook.ID = nextBookID
+	nextBookID++
+
+	// Add the new book to the books slice
+	books = append(books, newBook)
+
+	// Respond with the newly added book
+	response, err := json.Marshal(newBook)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	w.Write(response)
+}
+
+// Handler function for PUT /books/update
+func updateBookHandler(w http.ResponseWriter, r *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Decode the JSON request body into a Book struct
+	var updatedBook Book
+	err := json.NewDecoder(r.Body).Decode(&updatedBook)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Find the index of the book with the given ID
+	index := -1
+	for i, b := range books {
+		if b.ID == updatedBook.ID {
+			index = i
+			break
+		}
+	}
+
+	// If the book is not found, respond with 404 Not Found
+	if index == -1 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// Update the book in the books slice
+	books[index] = updatedBook
+
+	// Respond with the updated book
+	response, err := json.Marshal(updatedBook)
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(response)
+}
+
+// Handler function for DELETE /books/delete
+func deleteBookHandler(w http.ResponseWriter, r *http.Request) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	// Extract the book ID from the query parameters
+	idStr := r.URL.Query().Get("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Find the index of the book with the given ID
+	index := -1
+	for i, b := range books {
+		if b.ID == id {
+			index = i
+			break
+		}
+	}
+
+	// If the book is not found, respond with 404 Not Found
+	if index == -1 {
+		http.Error(w, "Not Found", http.StatusNotFound)
+		return
+	}
+
+	// Remove the book from the books slice
+	books = append(books[:index], books[index+1:]...)
+
+	// Respond with a success message
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Book deleted successfully"))
+}
